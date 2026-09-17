@@ -4,9 +4,8 @@ import requests
 
 app = FastAPI(title="Pokemon Explorer API")
 
-# CORS - allows our React frontend (on a different origin) to call this API.
-# allow_origins=["*"] is fine for a classroom demo. In production you'd
-# restrict this to your actual Vercel URL.
+# CORS - allow all origins so the Vercel-hosted frontend can call this
+# Render-hosted backend. allow_credentials must be False when using "*".
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,7 +24,14 @@ def read_root():
 
 @app.get("/pokemon/{name}")
 def get_pokemon(name: str):
-    response = requests.get(f"{POKEAPI_BASE_URL}/{name.lower()}")
+    try:
+        response = requests.get(
+            f"{POKEAPI_BASE_URL}/{name.lower().strip()}",
+            headers={"User-Agent": "PokemonExplorer/1.0"},
+            timeout=10,
+        )
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Error communicating with PokéAPI")
 
     if response.status_code != 200:
         raise HTTPException(status_code=404, detail="Pokemon not found")
